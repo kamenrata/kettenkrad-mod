@@ -117,22 +117,26 @@ public class KettenkradEntity extends Entity {
     }
 
     private void applyMovement(boolean onGround) {
-        float  speed = dataTracker.get(SPEED);
-        double rad   = Math.toRadians(currentYaw);
-        double dx    = -Math.sin(rad) * speed;
-        double dz    =  Math.cos(rad) * speed;
+    float  speed = dataTracker.get(SPEED);
+    double rad   = Math.toRadians(currentYaw);
+    double dx    = -Math.sin(rad) * speed;
+    double dz    =  Math.cos(rad) * speed;
 
-        // 重力：地面にいるときは沈まないよう固定
-        double dy;
-        if (onGround) {
-            dy = speed != 0 ? 0.1 : 0.0; // 段差乗り越え用に少し上向き
-        } else {
-            dy = getVelocity().y - 0.05; // 空中は緩い重力
-        }
-
-        setVelocity(dx, dy, dz);
-        move(MovementType.SELF, getVelocity());
+    double dy;
+    if (onGround) {
+        dy = 0.0; // 地面では完全に固定
+    } else {
+        dy = getVelocity().y - 0.08; // 空中は重力
     }
+
+    setVelocity(dx, dy, dz);
+    move(MovementType.SELF, getVelocity());
+
+    // 地面にめり込んだら強制的に押し上げる
+    if (getY() < prevY - 0.1 && onGround) {
+        setPos(getX(), prevY, getZ());
+    }
+}
 
     @Override
     public ActionResult interact(PlayerEntity player, Hand hand) {
