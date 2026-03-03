@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "kettenkrad",
+  "version": "${version}",
+  "name": "Kettenkrad Mod",
+  "description": "Adds the WWII Kettenkrad with storage and engine sounds.",
+  "authors": ["YourName"],
+  "license": "MIT",
+  "environment": "*",
+  "entrypoints": {
+    "main":   ["com.example.kettenkrad.KettenkradMod"],
+    "client": ["com.example.kettenkrad.client.KettenkradClientMod"]
+  },
+  "depends": {
+    "fabricloader": ">=0.15.11",
+    "fabric-api": "*",
+    "minecraft": "~1.21.1"
+  }
+}
