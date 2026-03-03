@@ -1,0 +1,17 @@
+{
+  "parent": "minecraft:item/generated",
+  "textures": {
+    "layer0": "minecraft:item/minecart"
+  }
+}
+```
+
+とりあえずミニカートのアイコンを仮で使います。
+
+---
+
+### ② テクスチャを入れる
+
+前に作ったテクスチャジェネレーターのHTMLはまだ手元にありますか？あればそこからPNGをダウンロードして：
+```
+src/main/resources/assets/kettenkrad/textures/entity/kettenkrad.png
