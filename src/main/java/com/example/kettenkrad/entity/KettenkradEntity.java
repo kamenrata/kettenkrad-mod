@@ -1,6 +1,7 @@
 package com.example.kettenkrad.entity;
 
 import com.example.kettenkrad.inventory.KettenkradScreenHandler;
+import net.minecraft.block.BlockState;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityType;
 import net.minecraft.entity.LivingEntity;
@@ -10,7 +11,6 @@ import net.minecraft.entity.data.DataTracker;
 import net.minecraft.entity.data.TrackedData;
 import net.minecraft.entity.data.TrackedDataHandlerRegistry;
 import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.inventory.Inventories;
 import net.minecraft.inventory.SimpleInventory;
 import net.minecraft.item.ItemStack;
@@ -22,15 +22,17 @@ import net.minecraft.text.Text;
 import net.minecraft.util.ActionResult;
 import net.minecraft.util.Hand;
 import net.minecraft.util.collection.DefaultedList;
+import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.World;
 
 public class KettenkradEntity extends Entity {
 
-    private static final float MAX_SPEED    = 0.35f;
-    private static final float ACCELERATION = 0.018f;
-    private static final float FRICTION     = 0.92f;
-    private static final int   INV_SIZE     = 27;
+    private static final float MAX_SPEED      = 0.28f;
+    private static final float ACCELERATION   = 0.015f;
+    private static final float DECELERATION   = 0.90f;
+    private static final float TURN_SPEED     = 3.5f;
+    private static final int   INV_SIZE       = 27;
 
     private static final TrackedData<Float> SPEED =
         DataTracker.registerData(KettenkradEntity.class, TrackedDataHandlerRegistry.FLOAT);
@@ -39,9 +41,11 @@ public class KettenkradEntity extends Entity {
     private final SimpleInventory inventory = new SimpleInventory(INV_SIZE);
     private int     engineSoundTimer = 0;
     private boolean wasRiding        = false;
+    private float   currentYaw       = 0f;
 
     public KettenkradEntity(EntityType<?> type, World world) {
         super(type, world);
+        // setStepHeightは使わない（沈む原因になる）
     }
 
     @Override
@@ -52,21 +56,26 @@ public class KettenkradEntity extends Entity {
     @Override
     public void tick() {
         super.tick();
-        if (isOnGround()) {
-            Vec3d v = getVelocity();
-            if (v.y < 0) setVelocity(v.x, 0, v.z);
-        }
+
         if (getWorld().isClient) return;
 
         Entity driver = getFirstPassenger();
+
+        // ── 地面判定 ──
+        boolean onGround = isOnGround();
+
         if (driver instanceof PlayerEntity player) {
             if (!wasRiding) {
                 getWorld().playSound(null, getX(), getY(), getZ(),
                     SoundEvents.BLOCK_ANVIL_LAND, SoundCategory.NEUTRAL, 0.4f, 1.8f);
-                wasRiding = true;
+                wasRiding    = true;
+                currentYaw   = getYaw();
                 engineSoundTimer = 0;
             }
-            handleDriving(player);
+
+            handleDriving(player, onGround);
+
+            // エンジン音
             engineSoundTimer++;
             if (engineSoundTimer >= 15) {
                 float spd   = Math.abs(dataTracker.get(SPEED));
@@ -80,6 +89,7 @@ public class KettenkradEntity extends Entity {
                     sound, SoundCategory.NEUTRAL, volume, pitch);
                 engineSoundTimer = 0;
             }
+
         } else {
             if (wasRiding) {
                 getWorld().playSound(null, getX(), getY(), getZ(),
@@ -87,37 +97,83 @@ public class KettenkradEntity extends Entity {
                 wasRiding = false;
             }
             engineSoundTimer = 0;
-            float spd = dataTracker.get(SPEED) * FRICTION;
+
+            // 無人時は減速
+            float spd = dataTracker.get(SPEED) * DECELERATION;
+            if (Math.abs(spd) < 0.001f) spd = 0f;
             dataTracker.set(SPEED, spd);
-            applyMovement(getYaw(), spd);
         }
+
+        applyMovement(onGround);
     }
 
-    private void handleDriving(PlayerEntity player) {
+    private void handleDriving(PlayerEntity player, boolean onGround) {
         float cur     = dataTracker.get(SPEED);
         float forward = player.forwardSpeed;
-        if      (forward > 0.01f)  cur = Math.min(cur + ACCELERATION, MAX_SPEED);
-        else if (forward < -0.01f) cur = Math.max(cur - ACCELERATION, -MAX_SPEED * 0.5f);
-        else                       cur *= FRICTION;
-        float yaw = player.getYaw();
-        setYaw(yaw);
-        setHeadYaw(yaw);
+        float strafe  = player.sidewaysSpeed;
+
+        // 前進・後退
+        if (forward > 0.01f) {
+            cur = Math.min(cur + ACCELERATION, MAX_SPEED);
+        } else if (forward < -0.01f) {
+            cur = Math.max(cur - ACCELERATION, -MAX_SPEED * 0.4f);
+        } else {
+            cur *= DECELERATION;
+            if (Math.abs(cur) < 0.001f) cur = 0f;
+        }
+
+        // 旋回（速度に応じて旋回速度を変える）
+        if (Math.abs(cur) > 0.01f) {
+            float turnAmount = TURN_SPEED * (strafe != 0 ? strafe : 0);
+            // マウスの向きで旋回
+            float targetYaw = player.getYaw();
+            float yawDiff   = targetYaw - currentYaw;
+            // 角度差を-180〜180に正規化
+            while (yawDiff > 180)  yawDiff -= 360;
+            while (yawDiff < -180) yawDiff += 360;
+            // 後退時は旋回を逆に
+            if (cur < 0) yawDiff = -yawDiff;
+            currentYaw += yawDiff * 0.15f;
+        }
+
+        setYaw(currentYaw);
+        setHeadYaw(currentYaw);
         dataTracker.set(SPEED, cur);
-        applyMovement(yaw, cur);
     }
 
-    private void applyMovement(float yaw, float speed) {
-        double rad = Math.toRadians(yaw);
-        double dx  = -Math.sin(rad) * speed;
-        double dz  =  Math.cos(rad) * speed;
-        double dy  = isOnGround() ? Math.min(getVelocity().y, 0) : getVelocity().y - 0.08;
+    private void applyMovement(boolean onGround) {
+        float speed = dataTracker.get(SPEED);
+        double rad  = Math.toRadians(currentYaw);
+        double dx   = -Math.sin(rad) * speed;
+        double dz   =  Math.cos(rad) * speed;
+
+        Vec3d current = getVelocity();
+
+        // 重力処理（地面にいるときは沈まないようにする）
+        double dy;
+        if (onGround) {
+            dy = Math.min(current.y, 0.05); // 地面では少し浮かせる
+            // 段差を乗り越える
+            if (speed != 0) {
+                dy = Math.max(dy, 0.1);
+            }
+        } else {
+            dy = current.y - 0.05; // 空中では重力（緩め）
+        }
+
         setVelocity(dx, dy, dz);
         move(MovementType.SELF, getVelocity());
+
+        // 移動後に地面にめり込んでいたら補正
+        if (isInsideWall()) {
+            setPos(getX(), getY() + 0.2, getZ());
+        }
     }
 
     @Override
     public ActionResult interact(PlayerEntity player, Hand hand) {
         if (getWorld().isClient) return ActionResult.SUCCESS;
+
         if (player.isSneaking()) {
             player.openHandledScreen(new SimpleNamedScreenHandlerFactory(
                 (syncId, inv, p) -> new KettenkradScreenHandler(syncId, inv, inventory),
@@ -125,10 +181,12 @@ public class KettenkradEntity extends Entity {
             ));
             return ActionResult.SUCCESS;
         }
+
         if (getFirstPassenger() == null) {
             player.startRiding(this);
             return ActionResult.SUCCESS;
         }
+
         return ActionResult.PASS;
     }
 
@@ -140,12 +198,12 @@ public class KettenkradEntity extends Entity {
     @Override
     public Vec3d getPassengerRidingPos(Entity passenger) {
         boolean isDriver = getPassengerList().indexOf(passenger) == 0;
-        return getPos().add(isDriver ? 0.0 : 0.6, 0.9, -0.3);
+        return getPos().add(isDriver ? 0.0 : 0.5, 1.1, isDriver ? -0.2 : -0.5);
     }
 
     @Override
     public Vec3d updatePassengerForDismount(LivingEntity passenger) {
-        return getPos().add(1.8, 0.1, 0);
+        return getPos().add(2.0, 0.5, 0);
     }
 
     @Override
