@@ -19,7 +19,7 @@ public class KettenkradItem extends Item {
         BlockPos pos = ctx.getBlockPos().up();
         KettenkradEntity entity = new KettenkradEntity(ModEntities.KETTENKRAD, world);
         entity.setPos(pos.getX()+0.5, pos.getY(), pos.getZ()+0.5);
-        entity.setYaw(ctx.getPlayerFacing().asRotation());
+        entity.setYaw(ctx.getHorizontalPlayerFacing().asRotation());
         world.spawnEntity(entity);
         PlayerEntity player = ctx.getPlayer();
         if (player != null && !player.isCreative()) ctx.getStack().decrement(1);
