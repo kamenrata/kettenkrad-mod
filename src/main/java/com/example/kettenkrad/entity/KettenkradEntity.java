@@ -173,5 +173,4 @@ public class KettenkradEntity extends Entity {
     public SimpleInventory getKettenkradInventory() { return inventory; }
 
     @Override public boolean shouldSave() { return true; }
-    @Override public boolean collides()   { return !isRemoved(); }
 }
