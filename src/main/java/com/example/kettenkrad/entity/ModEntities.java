@@ -15,7 +15,7 @@ public class ModEntities {
             Registries.ENTITY_TYPE,
             Identifier.of(KettenkradMod.MOD_ID, "kettenkrad"),
             FabricEntityTypeBuilder.<KettenkradEntity>create(SpawnGroup.MISC, KettenkradEntity::new)
-                .dimensions(EntityDimensions.fixed(2.5f, 1.5f))
+                .dimensions(EntityDimensions.fixed(2.0f, 1.8f)) // 幅2.0, 高さ1.8
                 .trackRangeBlocks(80)
                 .trackedUpdateRate(3)
                 .build()
