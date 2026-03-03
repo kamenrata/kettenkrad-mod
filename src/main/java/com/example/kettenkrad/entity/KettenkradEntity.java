@@ -42,7 +42,6 @@ public class KettenkradEntity extends Entity {
 
     public KettenkradEntity(EntityType<?> type, World world) {
         super(type, world);
-        this.setStepHeight(1.0f);
     }
 
     @Override
