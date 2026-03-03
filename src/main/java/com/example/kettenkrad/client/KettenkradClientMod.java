@@ -11,6 +11,9 @@ public class KettenkradClientMod implements ClientModInitializer {
     @Override
     public void onInitializeClient() {
         EntityRendererRegistry.register(ModEntities.KETTENKRAD, KettenkradRenderer::new);
-        HandledScreens.register(KettenkradMod.KETTENKRAD_SCREEN_HANDLER, GenericContainerScreen::new);
+        HandledScreens.<com.example.kettenkrad.inventory.KettenkradScreenHandler, GenericContainerScreen>register(
+            KettenkradMod.KETTENKRAD_SCREEN_HANDLER,
+            (syncId, inv, player) -> new GenericContainerScreen(syncId, inv, player, net.minecraft.text.Text.empty())
+        );
     }
 }
