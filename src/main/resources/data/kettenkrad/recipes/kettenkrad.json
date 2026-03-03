@@ -1,0 +1,12 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [" I ", "CIC", "WRW"],
+  "key": {
+    "I": {"item": "minecraft:iron_block"},
+    "C": {"item": "minecraft:chain"},
+    "W": {"item": "minecraft:iron_ingot"},
+    "R": {"item": "minecraft:redstone"}
+  },
+  "result": {"id": "kettenkrad:kettenkrad", "count": 1}
+}
